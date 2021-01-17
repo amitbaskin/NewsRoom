@@ -40,7 +40,7 @@ public class Client extends JFrame implements Runnable {
                 setIsGetNews(false);
                 int length = Server.DISCONNECT.length();
                 try {
-                    getSocket().send(new DatagramPacket(Server.CONNECT.getBytes(), length,
+                    getSocket().send(new DatagramPacket(Server.DISCONNECT.getBytes(), length,
                             getServerAddress(), Server.PORT_NUM));
                 } catch (IOException exception) {
                     exception.printStackTrace();

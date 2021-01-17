@@ -2,13 +2,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
 
 public class Server extends JFrame implements Runnable{
     public static final String FRAME_TITLE = "Server";
@@ -38,19 +39,26 @@ public class Server extends JFrame implements Runnable{
         newsArea.setEditable(true);
         add(new JScrollPane(newsArea), BorderLayout.CENTER);
         JButton sendBtn = new JButton(SEND_TITLE);
-        add(sendBtn, BorderLayout.WEST);
+        add(sendBtn, BorderLayout.SOUTH);
         sendBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String news = newsArea.getText();
-                for (InetAddress address : clients.keySet()){
-                    try {
-                        socket.send(new DatagramPacket(news.getBytes(), news.length(), address,
-                                clients.get(address)));
-                    } catch (IOException exception) {
-                        exception.printStackTrace();
+                new SwingWorker<Object, Object>(){
+                    @Override
+                    protected Object doInBackground(){
+                        String news = newsArea.getText();
+                        for (InetAddress address : clients.keySet()){
+                            try {
+                                socket.send(new DatagramPacket(news.getBytes(), news.length(), address,
+                                        clients.get(address)));
+                            } catch (IOException exception) {
+                                exception.printStackTrace();
+                            }
+                        } newsArea.setText(DEFAULT_TEXT);
+                        return null;
                     }
-                } newsArea.setText(DEFAULT_TEXT);
+                }.doInBackground();
+
             }
         });
         JPanel enrollmentPanel = new JPanel();
@@ -68,9 +76,9 @@ public class Server extends JFrame implements Runnable{
                 run();
             }
         });
-        enrollmentPanel.add(stopBtn, BorderLayout.NORTH);
-        enrollmentPanel.add(continueBtn, BorderLayout.SOUTH);
-        add(enrollmentPanel, BorderLayout.EAST);
+        enrollmentPanel.add(stopBtn, BorderLayout.WEST);
+        enrollmentPanel.add(continueBtn, BorderLayout.EAST);
+        add(enrollmentPanel, BorderLayout.NORTH);
         setSize(COLS, ROWS);
         setVisible(true);
         try{
@@ -79,9 +87,21 @@ public class Server extends JFrame implements Runnable{
             exception.printStackTrace();
             System.exit(1);
         }
-    }
-
-    public void initialize(){
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                setAcceptNewClients(false);
+                int length = Server.DISCONNECT.length();
+                for (InetAddress address : clients.keySet()) {
+                    try {
+                        socket.send(new DatagramPacket(Server.DISCONNECT.getBytes(), length, address,
+                                clients.get(address)));
+                    } catch (IOException exception) {
+                        exception.printStackTrace();
+                    }
+                } dispose();
+            }
+        });
     }
 
     public void run(){
